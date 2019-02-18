@@ -1,0 +1,15 @@
+                        uint64_t position = 0;
+                        char letter; 
+
+                        for (int i=0;i<10;i++)
+                        {
+                                index = i;
+                                value = dropcnt.lookup(&index);
+                                position = i;
+                                char gramma = get_question_name(data, nh_off, udp_off, dns_off, payload_off, position, data_end);
+                                if (value)
+                                {
+                                        *value = gramma;
+                                }
+                        }
+
