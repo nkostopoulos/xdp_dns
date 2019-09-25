@@ -10,6 +10,8 @@
 #include <uapi/linux/dns.h>
 #include "bpf_helpers.h"
 
+#include <crypto/hash.h>
+
 #define bpf_printk(fmt, ...)                    \
 ({                              \
            char ____fmt[] = fmt;                \
@@ -31,6 +33,7 @@ struct bpf_map_def SEC("maps") counter_map = {
 	.max_entries = 1,
 };
 
+
 SEC("xdp_ip_filter")
 int _xdp_ip_filter(struct xdp_md *ctx) {
   // key of the maps
@@ -38,7 +41,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   // the ip to filter
   u32 *ip;
 
-  bpf_printk("starting xdp ip filter\n");
+  //bpf_printk("starting xdp ip filter\n");
 
   // get the ip to filter from the ip_filtered map
   ip = bpf_map_lookup_elem(&ip_map, &key);
@@ -120,34 +123,38 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 	  return XDP_PASS;
   }
 
+  // Reach the DNS Payload
   char* name = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(struct dnshdr) - 1;
   if (name + 1 > data_end) {
 	  return XDP_PASS;
   }
 
+  // The String that will hold the requested name
   char myString[253];
 
   u32 i = 0;
-  u32 dummy = 0;
-  u32 total_chars = 0;
+  u32 hash_jenkins = 0;
+  u32 hash_bernstein = 0;
+
+  // Parse DNS name and hash it in the process with Jenkins, Bernstein hash functions
   #pragma unroll
   for (i = 0; i < 253; i = i + 1) {
 	if (name + i + 1 > data_end) {
-		return XDP_PASS;
+	       	return XDP_PASS;
 	}
-	myString[i] = name[i];
-	if (myString[i] == 0) {
-		total_chars = i;
-		break;
-	} else if (myString[i] < 65) {
-	       myString[i] = '.';
-       	} else {
-	        dummy = 0;
-	}
+	if (name[i] != 0) {
+		hash_jenkins += name[i];
+		hash_jenkins += (hash_jenkins << 10);
+		hash_jenkins ^= (hash_jenkins >> 6);
+		hash_bernstein = 33 * hash_bernstein + name[i];
+	} else break;
   }
 
-  bpf_printk("Total chars: %s\n", myString);
-  
+  hash_jenkins += (hash_jenkins << 3);
+  hash_jenkins ^= (hash_jenkins >> 11);
+  hash_jenkins += (hash_jenkins << 15);
+  //bpf_printk("jenkins %u\n", hash_jenkins);
+  //bpf_printk("bernstein %u\n", hash_bernstein);
 
   return XDP_PASS;
 }
