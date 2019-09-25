@@ -10,7 +10,8 @@
 #include <uapi/linux/dns.h>
 #include "bpf_helpers.h"
 
-#include <crypto/hash.h>
+#define FNV_PRIME_32 16777619
+#define FNV_OFFSET_32 2166136261U
 
 #define bpf_printk(fmt, ...)                    \
 ({                              \
@@ -41,15 +42,11 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   // the ip to filter
   u32 *ip;
 
-  //bpf_printk("starting xdp ip filter\n");
-
   // get the ip to filter from the ip_filtered map
   ip = bpf_map_lookup_elem(&ip_map, &key);
   if (!ip){
     return XDP_PASS;
   }
-
-  //bpf_printk("the ip address to filter is %u\n", ip);
 
   void *data_end = (void *)(long)ctx->data_end;
   void *data     = (void *)(long)ctx->data;
@@ -71,27 +68,11 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
     return XDP_PASS;
   }
   u32 ip_src = iph->saddr;
-  //bpf_printk("source ip address is %u\n", ip_src);
   u32 ip_dst = iph->daddr;
-  //bpf_printk("destination ip address is %u\n", ip_dst);
 
-  // drop the packet if the ip source address is equal to ip
-  /*
-  if (ip_src == *ip) {
-    u64 *filtered_count;
-    u64 *counter;
-    counter = bpf_map_lookup_elem(&counter_map, &key);
-    if (counter) {
-      *counter += 1;
-    }
-    return XDP_DROP;
-  }
-  return XDP_PASS;
-  */
 
   // Get the protocol number from the IP header
   u8 ip_proto = iph->protocol;
-  //bpf_printk("ip protocol is %u\n", ip_proto);
 
   // UDP protocol number is 17
   // If the packet is not UDP, pass the packet to the TCP/IP Stack
@@ -107,15 +88,24 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 
   // Get source and destination port of UDP segment
   u16 source_port = udph->source;
-  //bpf_printk("source port is %u\n", source_port);
   u16 destination_port = udph->dest;
-  //bpf_printk("destination port is %u\n", destination_port);
 
   // If packet is not DNS request, pass the packet to the TCP/IP Stack
   // Notably, DNS destination port is logged in trace as 13568
   if (destination_port != 13568) {
 	  return XDP_PASS;
   }
+  // drop the packet if the ip source address is equal to ip
+  if (ip_src == *ip) {
+    u64 *filtered_count;
+    u64 *counter;
+    counter = bpf_map_lookup_elem(&counter_map, &key);
+    if (counter) {
+      *counter += 1;
+    }
+    return XDP_DROP;
+  }
+  return XDP_PASS;
 
   // Struct for DNS header
   struct dnshdr *dnsh = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
@@ -134,9 +124,10 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 
   u32 i = 0;
   u32 hash_jenkins = 0;
-  u32 hash_bernstein = 0;
+  u32 hash_fnv = FNV_OFFSET_32;
+  u32 hash_djb2 = 5381;
 
-  // Parse DNS name and hash it in the process with Jenkins, Bernstein hash functions
+  // Parse DNS name and hash it in the process with Jenkins, Fnv, Djb2 hash function
   #pragma unroll
   for (i = 0; i < 253; i = i + 1) {
 	if (name + i + 1 > data_end) {
@@ -146,15 +137,15 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		hash_jenkins += name[i];
 		hash_jenkins += (hash_jenkins << 10);
 		hash_jenkins ^= (hash_jenkins >> 6);
-		hash_bernstein = 33 * hash_bernstein + name[i];
+		hash_fnv ^= name[i];
+		hash_fnv *= FNV_PRIME_32;
+		hash_djb2 = ((hash_djb2 << 5) + hash_djb2) + name[i];
 	} else break;
   }
 
   hash_jenkins += (hash_jenkins << 3);
   hash_jenkins ^= (hash_jenkins >> 11);
   hash_jenkins += (hash_jenkins << 15);
-  //bpf_printk("jenkins %u\n", hash_jenkins);
-  //bpf_printk("bernstein %u\n", hash_bernstein);
 
   return XDP_PASS;
 }
