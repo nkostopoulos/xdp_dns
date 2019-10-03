@@ -24,6 +24,7 @@ struct bpf_map_def SEC("maps") ip_map = {
 	.max_entries = 1,
 };
 
+
 struct bpf_map_def SEC("maps") counter_map = {
 	.type        = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size    = sizeof(__u32),
@@ -31,10 +32,16 @@ struct bpf_map_def SEC("maps") counter_map = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def SEC("maps") bloom_filter_map = {
+	.type	     = BPF_MAP_TYPE_ARRAY,
+	.key_size    = sizeof(__u32),
+	.value_size  = sizeof(bool),
+	.max_entries = 95930,
+};
+
 
 SEC("xdp_ip_filter")
 int _xdp_ip_filter(struct xdp_md *ctx) {
-  bpf_printk("Starting XDP Program\n");
   // key of the maps
   u32 key = 0;
   // the ip to filter
@@ -87,26 +94,12 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   // Get source and destination port of UDP segment
   u16 source_port = udph->source;
   u16 destination_port = udph->dest;
-  bpf_printk("Destination port is: %u\n", destination_port);
 
   // If packet is not DNS request, pass the packet to the TCP/IP Stack
   // Notably, DNS destination port is logged in trace as 13568
   if (destination_port != 13568) {
 	  return XDP_PASS;
   }
-  // drop the packet if the ip source address is equal to ip
-  /*
-  if (ip_src == *ip) {
-    u64 *filtered_count;
-    u64 *counter;
-    counter = bpf_map_lookup_elem(&counter_map, &key);
-    if (counter) {
-      *counter += 1;
-    }
-    return XDP_DROP;
-  }
-  return XDP_PASS;
-  */
 
   // Struct for DNS header
   struct dnshdr *dnsh = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
@@ -127,7 +120,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   u32 multiplier = 1;
   
   // some variables for the mmh3
-  u32 h = 0;
+  u32 h1 = 0;
+  u32 h2 = 42;
   u32 k = 0;
 
   #pragma unroll
@@ -147,17 +141,56 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		k *= 0xcc9e2d51;
 		k = (k << 15) | (k >> 17);
 		k *= 0x1b873593;
-		h ^= k;
-		h = (h << 13) | (h >> 19);
-		h = h * 5 + 0xe6546b64;
+		h1 ^= k;
+		h2 ^= k;
+		h1 = (h1 << 13) | (h1 >> 19);
+		h2 = (h2 << 13) | (h2 >> 19);
+		h1 = h1 * 5 + 0xe6546b64;
+		h2 = h2 * 5 + 0xe6546b64;
 		multiplier = 1;
 		k = 0;
 	}
   }
 
-  bpf_printk("%u\n", h);
+  u32 bf_size = 95930;
+  u32 hash1;
+  hash1 = h1 % bf_size;
+  u32 hash2;
+  hash2 = (h1 + h2) % bf_size;
+  u32 hash3;
+  hash3 = (h1 + 2 * h2) % bf_size;
+  u32 hash4;
+  hash4 = (h1 + 3 * h2) % bf_size;
+  u32 hash5;
+  hash5 = (h1 + 4 * h2) % bf_size;
+  u32 hash6;
+  hash6 = (h1 + 5 * h2) % bf_size;
+  u32 hash7;
+  hash7 = (h1 + 6 * h2) % bf_size;
 
+  bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
+  bool *bit2 = bpf_map_lookup_elem(&bloom_filter_map, &hash2);
+  bool *bit3 = bpf_map_lookup_elem(&bloom_filter_map, &hash3);
+  bool *bit4 = bpf_map_lookup_elem(&bloom_filter_map, &hash4);
+  bool *bit5 = bpf_map_lookup_elem(&bloom_filter_map, &hash5);
+  bool *bit6 = bpf_map_lookup_elem(&bloom_filter_map, &hash6);
+  bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
+  
+  if (!bit1) return XDP_DROP;
+  if (!bit2) return XDP_DROP;
+  if (!bit3) return XDP_DROP;
+  if (!bit4) return XDP_DROP;
+  if (!bit5) return XDP_DROP;
+  if (!bit6) return XDP_DROP;
+  if (!bit7) return XDP_DROP;
 
+  if (*bit1 == 0) return XDP_DROP;
+  if (*bit2 == 0) return XDP_DROP;
+  if (*bit3 == 0) return XDP_DROP;
+  if (*bit4 == 0) return XDP_DROP;
+  if (*bit5 == 0) return XDP_DROP;
+  if (*bit6 == 0) return XDP_DROP;
+  if (*bit7 == 0) return XDP_DROP;
 
   return XDP_PASS;
 }
