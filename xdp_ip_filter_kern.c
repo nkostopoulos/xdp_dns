@@ -42,16 +42,14 @@ struct bpf_map_def SEC("maps") bloom_filter_map = {
 
 SEC("xdp_ip_filter")
 int _xdp_ip_filter(struct xdp_md *ctx) {
-  // key of the maps
+	/*
   u32 key = 0;
-  // the ip to filter
   u32 *ip;
-
-  // get the ip to filter from the ip_filtered map
   ip = bpf_map_lookup_elem(&ip_map, &key);
   if (!ip){
     return XDP_PASS;
   }
+  */
 
   void *data_end = (void *)(long)ctx->data_end;
   void *data     = (void *)(long)ctx->data;
@@ -168,6 +166,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   u32 hash7;
   hash7 = (h1 + 6 * h2) % bf_size;
 
+
   bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
   bool *bit2 = bpf_map_lookup_elem(&bloom_filter_map, &hash2);
   bool *bit3 = bpf_map_lookup_elem(&bloom_filter_map, &hash3);
@@ -175,14 +174,14 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   bool *bit5 = bpf_map_lookup_elem(&bloom_filter_map, &hash5);
   bool *bit6 = bpf_map_lookup_elem(&bloom_filter_map, &hash6);
   bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
-  
-  if (!bit1) return XDP_DROP;
-  if (!bit2) return XDP_DROP;
-  if (!bit3) return XDP_DROP;
-  if (!bit4) return XDP_DROP;
-  if (!bit5) return XDP_DROP;
-  if (!bit6) return XDP_DROP;
-  if (!bit7) return XDP_DROP;
+
+  if (!bit1) return XDP_PASS;
+  if (!bit2) return XDP_PASS;
+  if (!bit3) return XDP_PASS;
+  if (!bit4) return XDP_PASS;
+  if (!bit5) return XDP_PASS;
+  if (!bit6) return XDP_PASS;
+  if (!bit7) return XDP_PASS;
 
   if (*bit1 == 0) return XDP_DROP;
   if (*bit2 == 0) return XDP_DROP;
