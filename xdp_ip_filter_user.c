@@ -112,5 +112,4 @@ int main(int argc, char **argv) {
   // unlink the xdp program
   bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
   return 0;
-
 }

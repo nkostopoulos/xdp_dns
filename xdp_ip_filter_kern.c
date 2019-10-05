@@ -95,14 +95,14 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   }
 
   u32 i = 0;
-  u32 byte = 0; // holds the string characters in every iteration
-  u32 prev_byte = 0;
-  u32 prev_prev_byte = 0;
+  u32 byte = 0; // holds the last character in every iteration
+  u32 prev_byte = 0; // holds the previous from the last character in the iteration
+  u32 prev_prev_byte = 0; // holds the third character from the end
   u32 upper_16 = 0; // upper digit of the hexadecimal number
   u32 lower_16 = 0;  // lower digit of the hexadecimal number 
-  u32 multiplier = 1;
+  u32 multiplier = 1; // although mmh3 works in chunks of 4, multiplier helps make it in steps of 1
   
-  // some variables for the mmh3
+  // variables that will hold the hashes of the string
   u32 h1 = 0;
   u32 h2 = 1;
   u32 h3 = 2;
@@ -127,7 +127,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 	multiplier *= 16;
 	k += upper_16 * multiplier;
 	multiplier *= 16;
-	if (i % 4 == 3) {
+	// mmh3 works in chunks of 4
+	if (i % 4 == 3) { 
 		k *= 0xcc9e2d51;
 		k = (k << 15) | (k >> 17);
 		k *= 0x1b873593;
@@ -157,6 +158,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 	}
   }
 
+  // Deal with the remaining characters
   k = 0;
   u32 remains = i % 4;
   u8 tail0 = 0;
@@ -251,21 +253,29 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   u32 hash5 = h5 % 95930;
   u32 hash6 = h6 % 95930;
   u32 hash7 = h7 % 95930;
- 
+
+  // Lookups in the Bloom Filter
   bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
-  if (bit1 && *bit1 == 0) return XDP_DROP;
+  if (!bit1) return XDP_PASS;
+  if (*bit1 == 0) return XDP_DROP;
   bool *bit2 = bpf_map_lookup_elem(&bloom_filter_map, &hash2);
-  if (bit2 && *bit2 == 0) return XDP_DROP;
+  if (!bit2) return XDP_PASS;
+  if (*bit2 == 0) return XDP_DROP;
   bool *bit3 = bpf_map_lookup_elem(&bloom_filter_map, &hash3);
-  if (bit3 && *bit3 == 0) return XDP_DROP;
+  if (!bit3) return XDP_PASS;
+  if (*bit3 == 0) return XDP_DROP;
   bool *bit4 = bpf_map_lookup_elem(&bloom_filter_map, &hash4);
-  if (bit4 && *bit4 == 0) return XDP_DROP;
+  if (!bit4) return XDP_PASS;
+  if (*bit4 == 0) return XDP_DROP;
   bool *bit5 = bpf_map_lookup_elem(&bloom_filter_map, &hash5);
-  if (bit5 && *bit5 == 0) return XDP_DROP;
+  if (!bit5) return XDP_PASS;
+  if (*bit5 == 0) return XDP_DROP;
   bool *bit6 = bpf_map_lookup_elem(&bloom_filter_map, &hash6);
-  if (bit6 && *bit6 == 0) return XDP_DROP;
+  if (!bit6) return XDP_PASS;
+  if (*bit6 == 0) return XDP_DROP;
   bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
-  if (bit7 && *bit7 == 0) return XDP_DROP;
+  if (!bit7) return XDP_DROP;
+  if (*bit7 == 0) return XDP_DROP;
 
   return XDP_PASS;
 }
