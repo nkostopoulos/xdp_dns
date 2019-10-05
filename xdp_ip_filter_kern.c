@@ -17,14 +17,6 @@
                 ##__VA_ARGS__);         \
 })
 
-struct bpf_map_def SEC("maps") ip_map = {
-	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = sizeof(__u32),
-	.value_size  = sizeof(__u32),
-	.max_entries = 1,
-};
-
-
 struct bpf_map_def SEC("maps") counter_map = {
 	.type        = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size    = sizeof(__u32),
@@ -39,17 +31,8 @@ struct bpf_map_def SEC("maps") bloom_filter_map = {
 	.max_entries = 95930,
 };
 
-
 SEC("xdp_ip_filter")
 int _xdp_ip_filter(struct xdp_md *ctx) {
-	/*
-  u32 key = 0;
-  u32 *ip;
-  ip = bpf_map_lookup_elem(&ip_map, &key);
-  if (!ip){
-    return XDP_PASS;
-  }
-  */
 
   void *data_end = (void *)(long)ctx->data_end;
   void *data     = (void *)(long)ctx->data;
@@ -70,8 +53,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (iph + 1 > data_end) {
     return XDP_PASS;
   }
-  u32 ip_src = iph->saddr;
-  u32 ip_dst = iph->daddr;
+  //u32 ip_src = iph->saddr;
+  //u32 ip_dst = iph->daddr;
 
 
   // Get the protocol number from the IP header
@@ -90,7 +73,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   }
 
   // Get source and destination port of UDP segment
-  u16 source_port = udph->source;
+  //u16 source_port = udph->source;
   u16 destination_port = udph->dest;
 
   // If packet is not DNS request, pass the packet to the TCP/IP Stack
@@ -113,21 +96,27 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 
   u32 i = 0;
   u32 byte = 0; // holds the string characters in every iteration
+  u32 prev_byte = 0;
+  u32 prev_prev_byte = 0;
   u32 upper_16 = 0; // upper digit of the hexadecimal number
   u32 lower_16 = 0;  // lower digit of the hexadecimal number 
   u32 multiplier = 1;
   
   // some variables for the mmh3
   u32 h1 = 0;
-  u32 h2 = 42;
+  u32 h2 = 1;
+  u32 h3 = 2;
+  u32 h4 = 3;
   u32 k = 0;
 
   #pragma unroll
-  for (i = 0; i < 253; i = i + 1) {
+  for (i = 0; i < 45; i = i + 1) {
 	if (name + i + 1 > data_end) {
 	       	return XDP_PASS;
 	}
 	if (name[i] == 0) break;
+	prev_prev_byte = prev_byte;
+	prev_byte = byte;
 	byte = name[i];
 	upper_16 = byte / 16;
 	lower_16 = byte % 16;
@@ -141,57 +130,92 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		k *= 0x1b873593;
 		h1 ^= k;
 		h2 ^= k;
+		h3 ^= k;
+		h4 ^= k;
 		h1 = (h1 << 13) | (h1 >> 19);
 		h2 = (h2 << 13) | (h2 >> 19);
+		h3 = (h3 << 13) | (h3 >> 19);
+		h4 = (h4 << 13) | (h4 >> 19);
 		h1 = h1 * 5 + 0xe6546b64;
 		h2 = h2 * 5 + 0xe6546b64;
+		h3 = h3 * 5 + 0xe6546b64;
+		h4 = h4 * 5 + 0xe6546b64;
 		multiplier = 1;
 		k = 0;
 	}
   }
 
-  u32 bf_size = 95930;
-  u32 hash1;
-  hash1 = h1 % bf_size;
-  u32 hash2;
-  hash2 = (h1 + h2) % bf_size;
-  u32 hash3;
-  hash3 = (h1 + 2 * h2) % bf_size;
-  u32 hash4;
-  hash4 = (h1 + 3 * h2) % bf_size;
-  u32 hash5;
-  hash5 = (h1 + 4 * h2) % bf_size;
-  u32 hash6;
-  hash6 = (h1 + 5 * h2) % bf_size;
-  u32 hash7;
-  hash7 = (h1 + 6 * h2) % bf_size;
+  k = 0;
+  u32 remains = i % 4;
+  u8 tail0 = 0;
+  u8 tail1 = 0;
+  u8 tail2 = 0;
+
+  if (remains == 1) {
+	  tail0 = byte;
+  } else if (remains == 2) {
+	  tail1 = byte;
+	  tail0 = prev_byte;
+  } else if (remains == 3) {
+	  tail2 = byte;
+	  tail1 = prev_byte;
+	  tail0 = prev_prev_byte;
+  }
+
+  if (remains == 3) {
+	  k ^= (tail2 << 16);
+	  remains = remains - 1;
+  }
+  if (remains == 2) {
+	  k ^= (tail1 << 8);
+	  remains = remains - 1;
+  }
+  if (remains == 1) {
+	  k ^= tail0;
+	  k *=0xcc9e2d51;
+	  k = (k << 15) | (k >> 17);
+	  k *= 0x1b873593;
+	  h1 ^= k;
+	  h2 ^= k;
+  }
+
+  h1 ^= i;
+  h2 ^= i;
+  h3 ^= i;
+  h4 ^= i;
+
+  h1 ^= (h1 >> 16);
+  h2 ^= (h2 >> 16);
+  h3 ^= (h3 >> 16);
+  h4 ^= (h4 >> 16);
+
+  h1 *= 0x85ebca6b;
+  h2 *= 0x85ebca6b;
+  h3 *= 0x85ebca6b;
+  h4 *= 0x85ebca6b;
+
+  h1 ^= (h1 >> 13);
+  h2 ^= (h2 >> 13);
+  h3 ^= (h3 >> 13);
+  h4 ^= (h4 >> 13);
+
+  h1 *= 0xc2b2ae35;
+  h2 *= 0xc2b2ae35;
+  h3 *= 0xc2b2ae35;
+  h4 *= 0xc2b2ae35;
+
+  h1 ^= (h1 >> 16);
+  h2 ^= (h2 >> 16);
+  h3 ^= (h3 >> 16);
+  h4 ^= (h4 >> 16);
 
 
-  bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
-  bool *bit2 = bpf_map_lookup_elem(&bloom_filter_map, &hash2);
-  bool *bit3 = bpf_map_lookup_elem(&bloom_filter_map, &hash3);
-  bool *bit4 = bpf_map_lookup_elem(&bloom_filter_map, &hash4);
-  bool *bit5 = bpf_map_lookup_elem(&bloom_filter_map, &hash5);
-  bool *bit6 = bpf_map_lookup_elem(&bloom_filter_map, &hash6);
-  bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
-
-  if (!bit1) return XDP_PASS;
-  if (!bit2) return XDP_PASS;
-  if (!bit3) return XDP_PASS;
-  if (!bit4) return XDP_PASS;
-  if (!bit5) return XDP_PASS;
-  if (!bit6) return XDP_PASS;
-  if (!bit7) return XDP_PASS;
-
-  if (*bit1 == 0) return XDP_DROP;
-  if (*bit2 == 0) return XDP_DROP;
-  if (*bit3 == 0) return XDP_DROP;
-  if (*bit4 == 0) return XDP_DROP;
-  if (*bit5 == 0) return XDP_DROP;
-  if (*bit6 == 0) return XDP_DROP;
-  if (*bit7 == 0) return XDP_DROP;
-
-  return XDP_PASS;
+  u32 hash1 = h1 % 95930;
+  u32 hash2 = h2 % 95930;
+  u32 hash3 = h3 % 95930;
+  u32 hash4 = h4 % 95930;
+ 
+  bpf_printk("hash2 %u\n", hash2);
 }
 
 char _license[] SEC("license") = "GPL";
