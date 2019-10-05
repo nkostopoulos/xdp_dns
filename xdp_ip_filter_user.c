@@ -52,19 +52,33 @@ int main(int argc, char **argv) {
   signal(SIGTERM, int_exit);
 
   __u32 result = 0;
-  __u32 key = 0;
   int i = 0;
   bool bf_value = 0;
 
+  FILE *fptr;
+  char c;
+  fptr = fopen("/root/mmh3/bloom_filter", "r");
+  if (fptr == NULL) {
+	  printf("Error! Exiting...\n");
+	  exit(1);
+  }
+
   // set the first element of the first map to the ip passed as a parameter
   for (i = 0; i < 95930; i++) {
-	bf_value = 1;
-  	result = bpf_map_update_elem(map_fd[2], &i, &bf_value, BPF_ANY);
+	fscanf(fptr, "%c", &c);
+	if (c == '0') {
+		bf_value = 0;
+	} else {
+	        bf_value = 1;
+	}
+  	result = bpf_map_update_elem(map_fd[1], &i, &bf_value, BPF_ANY);
   	if (result != 0) {
     		fprintf(stderr, "bpf_map_update_elem error %d %s \n", errno, strerror(errno));
     		return 1;
   	}
   }
+  fclose(fptr);
+
   // link the xdp program to the interface
   if (bpf_set_link_xdp_fd(ifindex, prog_fd[0], xdp_flags) < 0) {
     printf("link set xdp fd failed\n");

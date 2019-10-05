@@ -107,10 +107,13 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   u32 h2 = 1;
   u32 h3 = 2;
   u32 h4 = 3;
+  u32 h5 = 4;
+  u32 h6 = 5;
+  u32 h7 = 6;
   u32 k = 0;
 
   #pragma unroll
-  for (i = 0; i < 45; i = i + 1) {
+  for (i = 0; i < 50; i = i + 1) {
 	if (name + i + 1 > data_end) {
 	       	return XDP_PASS;
 	}
@@ -132,14 +135,23 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		h2 ^= k;
 		h3 ^= k;
 		h4 ^= k;
+		h5 ^= k;
+		h6 ^= k;
+		h7 ^= k;
 		h1 = (h1 << 13) | (h1 >> 19);
 		h2 = (h2 << 13) | (h2 >> 19);
 		h3 = (h3 << 13) | (h3 >> 19);
 		h4 = (h4 << 13) | (h4 >> 19);
+		h5 = (h5 << 13) | (h5 >> 19);
+		h6 = (h6 << 13) | (h6 >> 19);
+		h7 = (h7 << 13) | (h7 >> 19);
 		h1 = h1 * 5 + 0xe6546b64;
 		h2 = h2 * 5 + 0xe6546b64;
 		h3 = h3 * 5 + 0xe6546b64;
 		h4 = h4 * 5 + 0xe6546b64;
+		h5 = h5 * 5 + 0xe6546b64;
+		h6 = h6 * 5 + 0xe6546b64;
+		h7 = h7 * 5 + 0xe6546b64;
 		multiplier = 1;
 		k = 0;
 	}
@@ -177,45 +189,85 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 	  k *= 0x1b873593;
 	  h1 ^= k;
 	  h2 ^= k;
+	  h3 ^= k;
+	  h4 ^= k;
+	  h5 ^= k;
+	  h6 ^= k;
+	  h7 ^= k;
   }
 
   h1 ^= i;
   h2 ^= i;
   h3 ^= i;
   h4 ^= i;
+  h5 ^= i;
+  h6 ^= i;
+  h7 ^= i;
 
   h1 ^= (h1 >> 16);
   h2 ^= (h2 >> 16);
   h3 ^= (h3 >> 16);
   h4 ^= (h4 >> 16);
+  h5 ^= (h5 >> 16);
+  h6 ^= (h6 >> 16);
+  h7 ^= (h7 >> 16);
 
   h1 *= 0x85ebca6b;
   h2 *= 0x85ebca6b;
   h3 *= 0x85ebca6b;
   h4 *= 0x85ebca6b;
+  h5 *= 0x85ebca6b;
+  h6 *= 0x85ebca6b;
+  h7 *= 0x85ebca6b;
 
   h1 ^= (h1 >> 13);
   h2 ^= (h2 >> 13);
   h3 ^= (h3 >> 13);
   h4 ^= (h4 >> 13);
+  h5 ^= (h5 >> 13);
+  h6 ^= (h6 >> 13);
+  h7 ^= (h7 >> 13);
 
   h1 *= 0xc2b2ae35;
   h2 *= 0xc2b2ae35;
   h3 *= 0xc2b2ae35;
   h4 *= 0xc2b2ae35;
+  h5 *= 0xc2b2ae35;
+  h6 *= 0xc2b2ae35;
+  h7 *= 0xc2b2ae35;
 
   h1 ^= (h1 >> 16);
   h2 ^= (h2 >> 16);
   h3 ^= (h3 >> 16);
   h4 ^= (h4 >> 16);
-
+  h5 ^= (h5 >> 16);
+  h6 ^= (h6 >> 16);
+  h7 ^= (h7 >> 16);
 
   u32 hash1 = h1 % 95930;
   u32 hash2 = h2 % 95930;
   u32 hash3 = h3 % 95930;
   u32 hash4 = h4 % 95930;
+  u32 hash5 = h5 % 95930;
+  u32 hash6 = h6 % 95930;
+  u32 hash7 = h7 % 95930;
  
-  bpf_printk("hash2 %u\n", hash2);
+  bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
+  if (bit1 && *bit1 == 0) return XDP_DROP;
+  bool *bit2 = bpf_map_lookup_elem(&bloom_filter_map, &hash2);
+  if (bit2 && *bit2 == 0) return XDP_DROP;
+  bool *bit3 = bpf_map_lookup_elem(&bloom_filter_map, &hash3);
+  if (bit3 && *bit3 == 0) return XDP_DROP;
+  bool *bit4 = bpf_map_lookup_elem(&bloom_filter_map, &hash4);
+  if (bit4 && *bit4 == 0) return XDP_DROP;
+  bool *bit5 = bpf_map_lookup_elem(&bloom_filter_map, &hash5);
+  if (bit5 && *bit5 == 0) return XDP_DROP;
+  bool *bit6 = bpf_map_lookup_elem(&bloom_filter_map, &hash6);
+  if (bit6 && *bit6 == 0) return XDP_DROP;
+  bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
+  if (bit7 && *bit7 == 0) return XDP_DROP;
+
+  return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
