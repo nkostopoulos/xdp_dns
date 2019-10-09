@@ -25,10 +25,10 @@ struct bpf_map_def SEC("maps") counter_map = {
 };
 
 struct bpf_map_def SEC("maps") bloom_filter_map = {
-	.type	     = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.type	     = BPF_MAP_TYPE_ARRAY,
 	.key_size    = sizeof(__u32),
 	.value_size  = sizeof(bool),
-	.max_entries = 95930,
+	.max_entries = 102660,
 };
 
 SEC("xdp_ip_filter")
@@ -53,9 +53,6 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (iph + 1 > data_end) {
     return XDP_PASS;
   }
-  //u32 ip_src = iph->saddr;
-  //u32 ip_dst = iph->daddr;
-
 
   // Get the protocol number from the IP header
   u8 ip_proto = iph->protocol;
@@ -110,6 +107,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   u32 h5 = 4;
   u32 h6 = 5;
   u32 h7 = 6;
+  u32 h8 = 7;
+  u32 h9 = 8;
   u32 k = 0;
 
   #pragma unroll
@@ -139,6 +138,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		h5 ^= k;
 		h6 ^= k;
 		h7 ^= k;
+		h8 ^= k;
+		h9 ^= k;
 		h1 = (h1 << 13) | (h1 >> 19);
 		h2 = (h2 << 13) | (h2 >> 19);
 		h3 = (h3 << 13) | (h3 >> 19);
@@ -146,6 +147,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		h5 = (h5 << 13) | (h5 >> 19);
 		h6 = (h6 << 13) | (h6 >> 19);
 		h7 = (h7 << 13) | (h7 >> 19);
+		h8 = (h8 << 13) | (h8 >> 19);
+		h9 = (h9 << 13) | (h9 >> 19);
 		h1 = h1 * 5 + 0xe6546b64;
 		h2 = h2 * 5 + 0xe6546b64;
 		h3 = h3 * 5 + 0xe6546b64;
@@ -153,6 +156,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 		h5 = h5 * 5 + 0xe6546b64;
 		h6 = h6 * 5 + 0xe6546b64;
 		h7 = h7 * 5 + 0xe6546b64;
+		h8 = h8 * 5 + 0xe6546b64;
+		h9 = h9 * 5 + 0xe6546b64;
 		multiplier = 1;
 		k = 0;
 	}
@@ -196,6 +201,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
 	  h5 ^= k;
 	  h6 ^= k;
 	  h7 ^= k;
+	  h8 ^= k;
+	  h9 ^= k;
   }
 
   h1 ^= i;
@@ -205,6 +212,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 ^= i;
   h6 ^= i;
   h7 ^= i;
+  h8 ^= i;
+  h9 ^= i;
 
   h1 ^= (h1 >> 16);
   h2 ^= (h2 >> 16);
@@ -213,6 +222,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 ^= (h5 >> 16);
   h6 ^= (h6 >> 16);
   h7 ^= (h7 >> 16);
+  h8 ^= (h8 >> 16);
+  h9 ^= (h9 >> 16);
 
   h1 *= 0x85ebca6b;
   h2 *= 0x85ebca6b;
@@ -221,6 +232,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 *= 0x85ebca6b;
   h6 *= 0x85ebca6b;
   h7 *= 0x85ebca6b;
+  h8 *= 0x85ebca6b;
+  h9 *= 0x85ebca6b;
 
   h1 ^= (h1 >> 13);
   h2 ^= (h2 >> 13);
@@ -229,6 +242,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 ^= (h5 >> 13);
   h6 ^= (h6 >> 13);
   h7 ^= (h7 >> 13);
+  h8 ^= (h8 >> 13);
+  h9 ^= (h9 >> 13);
 
   h1 *= 0xc2b2ae35;
   h2 *= 0xc2b2ae35;
@@ -237,6 +252,8 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 *= 0xc2b2ae35;
   h6 *= 0xc2b2ae35;
   h7 *= 0xc2b2ae35;
+  h8 *= 0xc2b2ae35;
+  h9 *= 0xc2b2ae35;
 
   h1 ^= (h1 >> 16);
   h2 ^= (h2 >> 16);
@@ -245,21 +262,19 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h5 ^= (h5 >> 16);
   h6 ^= (h6 >> 16);
   h7 ^= (h7 >> 16);
+  h8 ^= (h8 >> 16);
+  h9 ^= (h9 >> 16);
 
-  u32 hash1 = h1 % 95930;
-  u32 hash2 = h2 % 95930;
-  u32 hash3 = h3 % 95930;
-  u32 hash4 = h4 % 95930;
-  u32 hash5 = h5 % 95930;
-  u32 hash6 = h6 % 95930;
-  u32 hash7 = h7 % 95930;
+  u32 hash1 = h1 % 102660;
+  u32 hash2 = h2 % 102660;
+  u32 hash3 = h3 % 102660;
+  u32 hash4 = h4 % 102660;
+  u32 hash5 = h5 % 102660;
+  u32 hash6 = h6 % 102660;
+  u32 hash7 = h7 % 102660;
+  u32 hash8 = h8 % 102660;
+  u32 hash9 = h9 % 102660;
 
-  u64 *counter;
-  u32 key = 0;
-  counter = bpf_map_lookup_elem(&counter_map, &key);
-  if (counter) {
-	  *counter += 1;
-  }
 
   // Lookups in the Bloom Filter
   bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
@@ -283,6 +298,19 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
   if (!bit7) return XDP_PASS;
   if (*bit7 == 0) return XDP_DROP;
+  bool *bit8 = bpf_map_lookup_elem(&bloom_filter_map, &hash8);
+  if (!bit8) return XDP_PASS;
+  if (*bit8 == 0) return XDP_DROP;
+  bool *bit9= bpf_map_lookup_elem(&bloom_filter_map, &hash9);
+  if (!bit9) return XDP_PASS;
+  if (*bit9 == 0) return XDP_DROP;
+
+  u64 *counter;
+  u32 key = 0;
+  counter = bpf_map_lookup_elem(&counter_map, &key);
+  if (counter) {
+	  *counter += 1;
+  }
   
   return XDP_PASS;
 }

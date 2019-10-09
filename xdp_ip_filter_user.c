@@ -86,17 +86,18 @@ int main(int argc, char **argv) {
   }
 
 
-  /*
   // get the number of cpus
   unsigned int nr_cpus = bpf_num_possible_cpus();
   __u64 values[nr_cpus];
+  int j = 0;
+  __u32 key = 0;
 
   
   // "infinite" loop
 
   for (i=0; i< 1000; i++) {
     // get the values of the second map into values.
-    assert(bpf_map_lookup_elem(map_fd[1], &key, values) == 0);
+    assert(bpf_map_lookup_elem(map_fd[0], &key, values) == 0);
     printf("%d\n", i);
     for (j=0; j < nr_cpus; j++) {
       printf("cpu %d, value = %llu\n", j, values[j]);
@@ -104,9 +105,8 @@ int main(int argc, char **argv) {
     printf("\n\n");
     sleep(2);
   }
-  */
 
-  for (;;){}
+  //for (;;){ sleep(5); }
 
   printf("end\n");
   // unlink the xdp program

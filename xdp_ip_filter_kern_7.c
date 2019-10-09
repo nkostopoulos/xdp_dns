@@ -25,10 +25,10 @@ struct bpf_map_def SEC("maps") counter_map = {
 };
 
 struct bpf_map_def SEC("maps") bloom_filter_map = {
-	.type	     = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.type	     = BPF_MAP_TYPE_ARRAY,
 	.key_size    = sizeof(__u32),
 	.value_size  = sizeof(bool),
-	.max_entries = 95930,
+	.max_entries = 102660,
 };
 
 SEC("xdp_ip_filter")
@@ -53,9 +53,6 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (iph + 1 > data_end) {
     return XDP_PASS;
   }
-  //u32 ip_src = iph->saddr;
-  //u32 ip_dst = iph->daddr;
-
 
   // Get the protocol number from the IP header
   u8 ip_proto = iph->protocol;
@@ -246,20 +243,14 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   h6 ^= (h6 >> 16);
   h7 ^= (h7 >> 16);
 
-  u32 hash1 = h1 % 95930;
-  u32 hash2 = h2 % 95930;
-  u32 hash3 = h3 % 95930;
-  u32 hash4 = h4 % 95930;
-  u32 hash5 = h5 % 95930;
-  u32 hash6 = h6 % 95930;
-  u32 hash7 = h7 % 95930;
+  u32 hash1 = h1 % 102660;
+  u32 hash2 = h2 % 102660;
+  u32 hash3 = h3 % 102660;
+  u32 hash4 = h4 % 102660;
+  u32 hash5 = h5 % 102660;
+  u32 hash6 = h6 % 102660;
+  u32 hash7 = h7 % 102660;
 
-  u64 *counter;
-  u32 key = 0;
-  counter = bpf_map_lookup_elem(&counter_map, &key);
-  if (counter) {
-	  *counter += 1;
-  }
 
   // Lookups in the Bloom Filter
   bool *bit1 = bpf_map_lookup_elem(&bloom_filter_map, &hash1);
@@ -283,6 +274,13 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   bool *bit7 = bpf_map_lookup_elem(&bloom_filter_map, &hash7);
   if (!bit7) return XDP_PASS;
   if (*bit7 == 0) return XDP_DROP;
+
+  u64 *counter;
+  u32 key = 0;
+  counter = bpf_map_lookup_elem(&counter_map, &key);
+  if (counter) {
+	  *counter += 1;
+  }
   
   return XDP_PASS;
 }
