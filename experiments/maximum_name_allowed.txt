@@ -1,0 +1,9 @@
+maximum allowed lenngth of DNS name versus the number of utilized hash functions
+hash = 3 -> name = 159
+hash = 4 -> name = 138
+hash = 5 -> name = 114
+hash = 6 -> name = 94
+hash = 7 -> name = 83
+hash = 8 -> name = 70
+hash = 9 -> name = 63
+hash = 10 -> name = 59

@@ -1,0 +1,3 @@
+mairon: 8 vCPUs, 2 GB RAM, 16 queues, VirtIO
+punisher: 8 x Intel(R) Core(TM) i7-3770 CPU @ 3.40 GHz (1 Socket)
+mairon kernel: 4.19.0-6-amd64

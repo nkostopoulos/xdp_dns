@@ -1,0 +1,1 @@
+llvm-objdump -S xdp_ip_filter_kern.o -no-show-raw-insn
