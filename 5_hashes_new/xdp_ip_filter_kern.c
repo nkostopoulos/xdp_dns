@@ -247,12 +247,6 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (char4 == 0) return XDP_DROP;
   if (char5 == 0) return XDP_DROP;
   
-  u64 *counter;
-  u32 key = 0;
-  counter = bpf_map_lookup_elem(&counter_map, &key);
-  if (counter) {
-	  *counter += 1;
-  }
   return XDP_PASS;
 }
 

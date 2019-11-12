@@ -244,7 +244,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (char3 == 0) return XDP_DROP;
   if (char4 == 0) return XDP_DROP;
   
-  return XDP_TX;
+  return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

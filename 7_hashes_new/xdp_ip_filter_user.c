@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
   FILE *fptr;
 
-  fptr = fopen("/root/bloom_filters_xdp/7_hashes/bloom_filter_7", "r");
+  fptr = fopen("/root/bloom_filters_xdp/7_hashes_new/bloom_filter_7", "r");
   if (fptr == NULL) {
 	  printf("Error! Exiting...\n");
 	  exit(1);

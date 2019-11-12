@@ -258,6 +258,13 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   char7 >>= (8 - mod7);
   char7 &= 0x01;
 
+  u64 *counter;
+  u32 key = 0;
+  counter = bpf_map_lookup_elem(&counter_map, &key);
+  if (counter) {
+	  *counter += 1;
+  }
+
   // Lookups in the Bloom Filter
   if (char1 == 0) return XDP_DROP;
   if (char2 == 0) return XDP_DROP;
@@ -267,13 +274,7 @@ int _xdp_ip_filter(struct xdp_md *ctx) {
   if (char6 == 0) return XDP_DROP;
   if (char7 == 0) return XDP_DROP;
   
-  u64 *counter;
-  u32 key = 0;
-  counter = bpf_map_lookup_elem(&counter_map, &key);
-  if (counter) {
-	  *counter += 1;
-  }
-  return XDP_PASS;
+  return XDP_TX;
 }
 
 char _license[] SEC("license") = "GPL";
