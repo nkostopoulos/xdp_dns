@@ -1,2 +1,0 @@
-invalid pcap: 120 Kpps
-valid pcap: 10 Kpps
