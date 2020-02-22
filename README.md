@@ -6,7 +6,7 @@ In this paper we relied on the eXpress Data Path (XDP) framework to efficiently 
   
 - Separate Calculations: We hash received DNS names using separate Mmh3 calculations  
 - Double Hashing: We hash received DNS names using Double Hashing for better performance. More information available in S. Tarkoma et al., "Theory and Practice of Bloom Filters for Distributed Systems", IEEE Communications Surveys & Tutorials, Volume 14, Issue 1, pp. 131-155, 1st Quarter 2012  
-- Traces: a Google Drive link to the Legitimate and Water Torture Attack Traces that we used for experimentation.  
+- Traces: Names used in the construction of the Legitimate and Attack traces.  
 - Bloom Filters XDP: Contains Bloom Filters used in our experimentation and guidelines on how to create your own.   
 - User Space Filtering: a User Space utility introduced in our previous work "A Privacy-Preserving Schema for the Detection and Collaborative Mitigation of DNS Water Torture Attacks in Cloud Infrastructures" submitted and presented in IEEE CloudNet 2019. A link to the presentation is available from here: http://www.netmode.ntua.gr/Presentations/CloudNet_nkostopoulos.pptx  
   
